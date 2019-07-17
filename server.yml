@@ -6,123 +6,14 @@ Parameters:
         Description: An environment name that will be prefixed
         Type: String
 
-    VpcCIDR:
-        Description: Please enter IP range for this.
-        Type: String
-        Default: 10.0.0.0/16
-
-    PublicSubnet1CIDR:
-        Description: Please enter IP range for this.
-        Type: String
-        Default: 10.0.0.0/24
-
-    PublicSubnet2CIDR:
-        Description: Please enter IP range for this.
-        Type: String
-        Default: 10.0.128.0/24
-        
 Resources:
-    VPC:
-        Type: AWS::EC2::VPC
-        Properties:
-            CidrBlock: !Ref VpcCIDR
-            EnableDnsHostnames: true
-            Tags:
-                - Key: Name
-                  Value: !Ref EnvironmentName  
-
-    InternetGateway:
-        Type: AWS::EC2::InternetGateway
-        Properties:
-            Tags:
-                - Key: Name
-                  Value: !Ref EnvironmentName
-                
-    InternetGatewayAttachment:
-        Type: AWS::EC2::VPCGatewayAttachment
-        Properties:
-            InternetGatewayId: !Ref InternetGateway
-            VpcId: !Ref VPC
-
-    PublicSubnet1:
-        Type: AWS::EC2::Subnet
-        Properties:
-            VpcId: !Ref VPC
-            AvailabilityZone: !Select [ 0, !GetAZs '' ]
-            CidrBlock: !Ref PublicSubnet1CIDR
-            MapPublicIpOnLaunch: true
-            Tags: 
-                - Key: Name
-                  Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
-
-    PublicSubnet2:
-        Type: AWS::EC2::Subnet
-        Properties:
-            VpcId: !Ref VPC
-            AvailabilityZone: !Select [ 1, !GetAZs '' ]
-            CidrBlock: !Ref PublicSubnet2CIDR
-            MapPublicIpOnLaunch: true
-            Tags: 
-                - Key: Name
-                  Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
-
-    NatGateway1EIP:
-        Type: AWS::EC2::EIP
-        DependsOn: InternetGatewayAttachment
-        Properties: 
-            Domain: vpc
-
-    NatGateway2EIP:
-        Type: AWS::EC2::EIP
-        DependsOn: InternetGatewayAttachment
-        Properties:
-            Domain: vpc
-
-    NatGateway1: 
-        Type: AWS::EC2::NatGateway
-        Properties: 
-            AllocationId: !GetAtt NatGateway1EIP.AllocationId
-            SubnetId: !Ref PublicSubnet1
-
-    NatGateway2: 
-        Type: AWS::EC2::NatGateway
-        Properties:
-            AllocationId: !GetAtt NatGateway2EIP.AllocationId
-            SubnetId: !Ref PublicSubnet2
-            
-    PublicRouteTable:
-        Type: AWS::EC2::RouteTable
-        Properties: 
-            VpcId: !Ref VPC
-            Tags: 
-                - Key: Name 
-                  Value: !Sub ${EnvironmentName} Public Routes
-
-    DefaultPublicRoute: 
-        Type: AWS::EC2::Route
-        DependsOn: InternetGatewayAttachment
-        Properties: 
-            RouteTableId: !Ref PublicRouteTable
-            DestinationCidrBlock: 0.0.0.0/0
-            GatewayId: !Ref InternetGateway
-
-    PublicSubnet1RouteTableAssociation:
-        Type: AWS::EC2::SubnetRouteTableAssociation
-        Properties:
-            RouteTableId: !Ref PublicRouteTable
-            SubnetId: !Ref PublicSubnet1
-
-    PublicSubnet2RouteTableAssociation:
-        Type: AWS::EC2::SubnetRouteTableAssociation
-        Properties:
-            RouteTableId: !Ref PublicRouteTable
-            SubnetId: !Ref PublicSubnet2
-
     LBSecGroup:
         Type: AWS::EC2::SecurityGroup
         Properties:
             GroupDescription: Allow http to our load balancer
-            VpcId: !Ref VPC
+            VpcId: 
+              Fn::ImportValue:
+                !Sub "${EnvironmentName}-VPCID"
             SecurityGroupIngress:
             - IpProtocol: tcp
               FromPort: 80
@@ -138,7 +29,9 @@ Resources:
         Type: AWS::EC2::SecurityGroup
         Properties:
             GroupDescription: Allow http to our hosts and SSH from local
-            VpcId: !Ref VPC
+            VpcId: 
+              Fn::ImportValue:
+                !Sub "${EnvironmentName}-VPCID"
             SecurityGroupIngress:
             - IpProtocol: tcp
               FromPort: 8080
@@ -185,18 +78,23 @@ Resources:
     WebAppGroup:
         Type: AWS::AutoScaling::AutoScalingGroup
         Properties:
+          VPCZoneIdentifier:
+          - Fn::ImportValue:
+              !Sub "${EnvironmentName}-PRIV-NETS"
           LaunchConfigurationName:
             Ref: WebAppLaunchConfig
           MinSize: '3'
           MaxSize: '5'
-          AvailabilityZones: "us-west-2"
+          TargetGroupARNs:
+          - Ref: WebAppTargetGroup
+          
 
     WebAppLB:
         Type: AWS::ElasticLoadBalancingV2::LoadBalancer
         Properties:
           Subnets:
-          - Ref: PublicSubnet1CIDR
-          - Ref: PublicSubnet2CIDR
+          - Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
+          - Fn::ImportValue: !Sub "${EnvironmentName}-PUB2-SN"
           SecurityGroups:
           - Ref: LBSecGroup
 
@@ -210,7 +108,7 @@ Resources:
           LoadBalancerArn:
             Ref: WebAppLB
           Port: '80'
-          Protocal: HTTP
+          Protocol: HTTP
 
     ALBListenerRule:
         Type: AWS::ElasticLoadBalancingV2::ListenerRule
@@ -235,6 +133,8 @@ Resources:
           Port: 8080
           Protocol: HTTP
           UnhealthyThresholdCount: 5
-          VpcId: !Ref VPC
+          VpcId:
+            Fn::ImportValue:
+                !Sub "${EnvironmentName}-VPCID"
 
 
