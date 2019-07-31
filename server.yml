@@ -59,10 +59,12 @@ Resources:
               
               systemctl start apache2
               cd /var/www/html
-              aws s3 cp s3://udacity-clouddevops/code.tgz .
-              tar -xzvf code.tgz
+              aws s3 cp s3://udacity-clouddevops/code.zip .
+              unzip -o code.zip
               chown -R www-data:www-data .
           ImageId: ami-005bdb005fb00e791
+          IamInstanceProfile:
+            Ref: ListS3BucketsInstanceProfile
           SecurityGroups:
           - Ref: WebServerSecGroup
           InstanceType: t3.small
@@ -132,5 +134,40 @@ Resources:
           VpcId:
             Fn::ImportValue:
                 !Sub "${EnvironmentName}-VPCID"
+
+    ListS3BucketsInstanceProfile:
+      Type: AWS::IAM::InstanceProfile
+      Properties:
+        Path: "/"
+        Roles:
+        - Ref: ListS3BucketsRole
+
+    ListS3BucketsPolicy:
+      Type: AWS::IAM::Policy
+      Properties:
+        PolicyName: ListS3BucketsPolicy
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:List*
+            Resource: "*"
+        Roles:
+        - Ref: ListS3BucketsRole
+
+    ListS3BucketsRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - ec2.amazonaws.com
+            Action:
+            - sts:AssumeRole
+        Path: "/"
+
 
     
