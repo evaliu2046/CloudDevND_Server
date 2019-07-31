@@ -59,7 +59,7 @@ Resources:
               
               systemctl start apache2
               cd /var/www/html
-              aws s3 cp s3://udacity-deploy-iac-project-2/code.tgz .
+              aws s3 cp s3://udacity-clouddevops/code.tgz .
               tar -xzvf code.tgz
               chown -R www-data:www-data .
           ImageId: ami-005bdb005fb00e791
@@ -133,8 +133,4 @@ Resources:
             Fn::ImportValue:
                 !Sub "${EnvironmentName}-VPCID"
 
-   
-
-
-
-
+    
