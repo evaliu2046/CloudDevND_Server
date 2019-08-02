@@ -61,6 +61,7 @@ Resources:
               cd /var/www/html
               aws s3 cp s3://udacity-clouddevops/code.zip .
               unzip -o code.zip
+              cp code/index.html .
               chown -R www-data:www-data .
           ImageId: ami-005bdb005fb00e791
           IamInstanceProfile:
