@@ -1,0 +1,27 @@
+Configuring an AWS instance with logging and core OS patches -- Eva Liu
+=======
+
+### Objective
+Install td‐agent (from fluentd) onto an EC2 instance using a CloudFormation StackSet
+    1. Launch an EC2 instance (t2.micro) that uses Amazon Linux 2017.3 within a VPC
+    2. Associate a Security Group to the instance to allow ssh access
+    3. Apply the appropriate OS patches (may use yum for the purposes of this exercise)
+    4. Install fluentd (and pre‐requesites) form the source
+    5. Configure fluentd to parse the Linux syslog and write to a KMS key encrypted S3 bucket (directory path should be the instance ID)
+
+### Files in this Folder 
+(If you missing any files, please connact evaliu2046@gmail.com)
+    1. ourinfra.yml
+    2. ourinfra_para.json
+    3. tdagent.yml
+    4. tdagent_para.json
+    5. os_patch.sh
+    6. install_fluentd.sh
+    7. create.sh 
+    8. update.sh
+    9. STT_aws_cloudformation.png
+    10. README
+
+
+
+
